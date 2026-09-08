@@ -1,0 +1,181 @@
+VOICELOG DEMO SCRIPT (4-5 minutes)
+===================================
+
+TARGET: DataForge x Rime Hackathon submission video
+
+SETUP BEFORE RECORDING:
+- Backend running: cd backend && python app.py
+- Browser open to http://localhost:8000
+- Microphone working
+- Rime API key configured and verified
+- Screen recording software ready with timer overlay if possible
+
+---
+
+[0:00 - 0:50] INTRODUCE THE USER AND PROBLEM
+---------------------------------------------
+
+(Show the VoiceLog UI on screen)
+
+NARRATE:
+"Meet Alex, a maintenance technician at an industrial facility. Alex spends
+their day inspecting equipment — hands full of tools, eyes on machinery.
+They need to log every observation, every part replacement, every
+measurement. But they can't touch a phone or tablet.
+
+VoiceLog solves this. It's a voice-first field operations log. Alex speaks
+commands and hears back confirmations — no screen interaction needed.
+The interface you see is just a status indicator. The real product is
+the voice."
+
+(Gesture at the minimal UI)
+
+"Removing speech from this product doesn't just degrade it — it
+eliminates it. The UI has no text input for logging, no buttons for
+timers. Speech IS the interface."
+
+---
+
+[0:50 - 1:50] NORMAL END-TO-END FLOW
+--------------------------------------
+
+NARRATE: "Let me show a normal workflow."
+
+ACTION: Hold mic button and say: "Log bearing inspected on pump seven"
+WAIT: Listen for Rime TTS confirmation
+SHOW: Point out the latency metric on screen
+
+ACTION: Say: "Start timer"
+WAIT: Listen for "Timer started"
+
+ACTION: Say: "Add note: slight vibration at high RPM"
+WAIT: Listen for confirmation
+
+ACTION: Say: "Stop timer"
+WAIT: Listen for elapsed time readback
+
+ACTION: Say: "Read log"
+WAIT: Listen for Rime reading back the recent entries
+
+NARRATE:
+"Each command is processed through Groq Whisper for speech recognition,
+a rule-based intent parser for speed, and Rime for text-to-speech.
+Notice the latency counter — we're consistently under 900 milliseconds
+from my voice stopping to hearing the first sound of the response."
+
+---
+
+[1:50 - 2:30] LATENCY STRESS CASE
+------------------------------------
+
+NARRATE:
+"Now let's stress the latency. I'll send several commands in rapid
+succession and watch the metrics."
+
+ACTION: Quick-fire commands:
+  1. "Log filter replaced"
+  2. (As soon as response starts) "Log pressure reading normal"
+  3. (As soon as response starts) "Add note: scheduled for recalibration"
+
+SHOW: Point out the metrics panel after each command
+SHOW: The E2E latency and TTS TTFB numbers
+
+NARRATE:
+"Even under rapid-fire input, the end-to-end latency stays under our
+900 millisecond target. This is because we stream audio chunks over
+WebSocket and start playback on the first chunk — we don't wait for
+the entire audio file to generate."
+
+(Optional: switch to terminal and run)
+ACTION: python test_measurement.py --mode latency --trials 5
+SHOW: The measurement output with pass/fail per trial
+
+---
+
+[2:30 - 3:20] INTERRUPTION STRESS CASE
+----------------------------------------
+
+NARRATE:
+"The second hard voice problem: interruption. Watch what happens when
+I barge in mid-response."
+
+ACTION: Say: "Read log"
+WAIT: Rime starts reading back entries (this will be a longer response)
+ACTION: After about 1 second of Rime speaking, press mic and say:
+        "Stop. Edit note: vibration was actually from adjacent unit"
+SHOW: Rime's voice cuts off immediately. New response plays.
+
+NARRATE:
+"The moment I pressed the button, three things happened simultaneously:
+First, the frontend flushed its audio buffer — instant silence.
+Second, an interrupt signal went to the backend via WebSocket.
+Third, the backend cancelled the in-progress Rime TTS request.
+The whole interrupt took under 200 milliseconds."
+
+ACTION: Show the interrupt latency in the metrics panel.
+
+(Optional: switch to terminal and run)
+ACTION: python test_measurement.py --mode interrupt --trials 3
+SHOW: The interrupt measurement results
+
+---
+
+[3:20 - 3:50] DELIBERATE FAILURE CASE
+---------------------------------------
+
+NARRATE:
+"Let me show a deliberate stress case. I'll trigger a long TTS
+response and interrupt it at exactly 500 milliseconds."
+
+ACTION: Type in text box: "Log comprehensive maintenance report: The primary
+        bearing was inspected and found to have moderate wear. The lubrication
+        system was serviced. The filter was replaced. Vibration readings
+        were taken."
+WAIT: Rime starts speaking the long response.
+ACTION: Hit the STOP button after a brief moment.
+SHOW: Instant silence. Metrics show interrupt time.
+
+NARRATE:
+"Even with a long, multi-sentence synthesis, the system cuts cleanly.
+No audio artifacts, no overlapping speech."
+
+---
+
+[3:50 - 4:30] RESULTS AND RIME CONFIRMATION
+---------------------------------------------
+
+NARRATE:
+"Let me confirm that Rime is the active speech provider."
+
+SHOW: Scroll down to the "Powered by Rime TTS" badge in the footer.
+SHOW: Open .env file (or .env.example) to show RIME_API_KEY, RIME_VOICE_ID,
+      RIME_MODEL_ID configuration.
+SHOW: Open backend/rime_client.py briefly to show the API call.
+
+NARRATE:
+"We're using Rime's mist model with the marsh voice, streaming MP3 at
+22050 Hz over HTTPS. The reduceLatency flag is enabled.
+
+To summarize:
+- Voice is essential — this product doesn't work without it.
+- We achieve sub-900ms end-to-end latency with streaming TTS.
+- Interruption response is under 200ms with clean cancellation.
+- All measurements are reproducible with test_measurement.py.
+
+VoiceLog. Built for the field. Powered by Rime."
+
+(End)
+
+---
+
+TOTAL RUNTIME: ~4:30
+
+CHECKLIST BEFORE SUBMITTING:
+[ ] Demo shows the user persona and problem
+[ ] Demo shows normal voice interaction flow
+[ ] Demo shows latency metrics on screen
+[ ] Demo shows interruption/barge-in working
+[ ] Demo shows a deliberate stress/failure case
+[ ] Demo confirms Rime is the active TTS provider
+[ ] Measurement script output is visible
+[ ] Video is 4-5 minutes

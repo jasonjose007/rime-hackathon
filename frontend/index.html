@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceLog - Field Operations</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>VoiceLog</h1>
+            <p class="subtitle">Voice-Driven Field Operations Log</p>
+        </header>
+
+        <div id="status-panel">
+            <div id="connection-status" class="status-dot disconnected"></div>
+            <span id="connection-text">Disconnected</span>
+        </div>
+
+        <div id="voice-indicator">
+            <div id="pulse-ring" class="idle"></div>
+            <div id="mic-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" fill="currentColor"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" fill="currentColor"/>
+                </svg>
+            </div>
+        </div>
+
+        <div id="controls">
+            <button id="mic-btn" class="btn-primary" disabled>Hold to Speak</button>
+            <button id="interrupt-btn" class="btn-danger" style="display:none">Stop</button>
+        </div>
+
+        <div id="text-input-area">
+            <input type="text" id="text-input" placeholder="Or type a command..." autocomplete="off">
+            <button id="send-btn" class="btn-secondary">Send</button>
+        </div>
+
+        <div id="transcript-area">
+            <div id="user-transcript" class="transcript-line"></div>
+            <div id="assistant-response" class="transcript-line"></div>
+        </div>
+
+        <div id="metrics-panel">
+            <div class="metric">
+                <span class="metric-label">E2E Latency</span>
+                <span id="metric-latency" class="metric-value">--</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">TTS TTFB</span>
+                <span id="metric-ttfb" class="metric-value">--</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Status</span>
+                <span id="metric-status" class="metric-value">Idle</span>
+            </div>
+        </div>
+
+        <div id="log-panel">
+            <h2>Operations Log</h2>
+            <div id="log-entries"></div>
+        </div>
+
+        <footer>
+            <span>Powered by <strong>Rime TTS</strong></span>
+            <span id="rime-badge">Rime Active</span>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
