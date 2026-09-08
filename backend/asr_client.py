@@ -12,6 +12,16 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_ASR_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 ASR_MODEL = os.getenv("ASR_MODEL", "whisper-large-v3-turbo")
 
+HALLUCINATION_PHRASES = {
+    "thank you", "thank you.", "thanks.", "thanks",
+    "bye", "bye.", "goodbye", "goodbye.",
+    "you", "you.", "the end", "the end.",
+    "okay", "okay.", "yes", "yes.", "no", "no.",
+    "hmm", "hmm.", "uh", "uh.", "um", "um.",
+    "thanks for watching", "thanks for watching.",
+    "subscribe", "like and subscribe",
+}
+
 
 class ASRClient:
     def __init__(self):
@@ -70,6 +80,11 @@ class ASRClient:
             transcript = response.text.strip()
             latency = round((time.time() - t_start) * 1000, 1)
             logger.info(f"ASR result ({latency}ms): {transcript[:80]}")
+
+            if transcript.lower().strip(".!?, ") in HALLUCINATION_PHRASES or len(transcript) < 3:
+                logger.warning(f"Filtered likely hallucination: '{transcript}'")
+                return ""
+
             return transcript
 
         except Exception as e:

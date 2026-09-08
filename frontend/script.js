@@ -3,6 +3,7 @@
 
     const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
     const WS_URL = `${wsProto}//${location.host}/ws`;
+    const MIN_RECORD_MS = 800;
 
     const $ = (sel) => document.querySelector(sel);
     const connDot = $("#connection-status");
@@ -22,13 +23,14 @@
     let ws = null;
     let audioCtx = null;
     let mediaRecorder = null;
+    let mediaStream = null;
     let audioChunks = [];
     let isRecording = false;
     let isSpeaking = false;
     let audioQueue = [];
     let currentSource = null;
-    let nextPlayTime = 0;
     let playbackActive = false;
+    let recordStartTime = 0;
 
     function connect() {
         ws = new WebSocket(WS_URL);
@@ -174,16 +176,24 @@
         }
     }
 
+    async function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            await startRecording();
+        }
+    }
+
     async function startRecording() {
         if (isRecording) return;
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            mediaStream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    sampleRate: 16000,
                     channelCount: 1,
                     echoCancellation: true,
                     noiseSuppression: true,
+                    autoGainControl: true,
                 },
             });
 
@@ -191,7 +201,7 @@
                 sendInterrupt();
             }
 
-            mediaRecorder = new MediaRecorder(stream, {
+            mediaRecorder = new MediaRecorder(mediaStream, {
                 mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
                     ? "audio/webm;codecs=opus"
                     : "audio/webm",
@@ -203,7 +213,16 @@
             };
 
             mediaRecorder.onstop = async () => {
-                stream.getTracks().forEach((t) => t.stop());
+                mediaStream.getTracks().forEach((t) => t.stop());
+                mediaStream = null;
+
+                const elapsed = Date.now() - recordStartTime;
+                if (elapsed < MIN_RECORD_MS) {
+                    metricStatus.textContent = "Too short — speak longer";
+                    pulseRing.className = "idle";
+                    return;
+                }
+
                 if (audioChunks.length === 0) return;
 
                 const blob = new Blob(audioChunks, { type: "audio/webm" });
@@ -211,17 +230,21 @@
 
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(arrayBuf);
+                    metricStatus.textContent = "Processing...";
+                    pulseRing.className = "processing";
                 }
             };
 
-            mediaRecorder.start(100);
+            mediaRecorder.start(250);
+            recordStartTime = Date.now();
             isRecording = true;
             pulseRing.className = "listening";
-            micBtn.textContent = "Release to Send";
-            metricStatus.textContent = "Listening";
+            micBtn.textContent = "Tap to Stop";
+            micBtn.classList.add("recording");
+            metricStatus.textContent = "Listening...";
         } catch (err) {
             console.error("Mic error:", err);
-            metricStatus.textContent = "Mic Error";
+            metricStatus.textContent = "Mic access denied";
         }
     }
 
@@ -230,9 +253,8 @@
 
         mediaRecorder.stop();
         isRecording = false;
-        pulseRing.className = "processing";
-        micBtn.textContent = "Hold to Speak";
-        metricStatus.textContent = "Processing...";
+        micBtn.textContent = "Tap to Speak";
+        micBtn.classList.remove("recording");
     }
 
     function sendText(text) {
@@ -286,12 +308,8 @@
         return div.innerHTML;
     }
 
-    // Event listeners
-    micBtn.addEventListener("mousedown", startRecording);
-    micBtn.addEventListener("mouseup", stopRecording);
-    micBtn.addEventListener("mouseleave", () => { if (isRecording) stopRecording(); });
-    micBtn.addEventListener("touchstart", (e) => { e.preventDefault(); startRecording(); });
-    micBtn.addEventListener("touchend", (e) => { e.preventDefault(); stopRecording(); });
+    // Mic button — tap to toggle
+    micBtn.addEventListener("click", toggleRecording);
 
     interruptBtn.addEventListener("click", sendInterrupt);
 
@@ -301,6 +319,7 @@
     });
 
     // Initialize
+    micBtn.textContent = "Tap to Speak";
     logEntries.innerHTML = '<div class="log-empty">No entries yet</div>';
     connect();
 

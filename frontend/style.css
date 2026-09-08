@@ -167,6 +167,11 @@ button {
     transform: translateY(0);
 }
 
+.btn-primary.recording {
+    background: #e74c3c;
+    animation: pulse 1s infinite;
+}
+
 .btn-danger {
     background: var(--danger);
     color: white;
