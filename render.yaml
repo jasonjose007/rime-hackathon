@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: voicelog
+    runtime: docker
+    repo: https://github.com/jasonjose007/rime-hackathon
+    plan: free
+    envVars:
+      - key: RIME_API_KEY
+        sync: false
+      - key: RIME_VOICE_ID
+        value: marsh
+      - key: RIME_MODEL_ID
+        value: mist
+      - key: RIME_ENDPOINT_URL
+        value: https://users.rime.ai/v1/rime-tts
+      - key: RIME_LANGUAGE
+        value: en
+      - key: RIME_AUDIO_FORMAT
+        value: mp3
+      - key: RIME_SAMPLE_RATE
+        value: "22050"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
