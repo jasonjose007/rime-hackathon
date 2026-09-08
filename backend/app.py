@@ -137,7 +137,7 @@ async def process_user_utterance(ws: WebSocket, session: SessionState, text: str
 
     action_result = execute_action(session, intent)
 
-    response_text = intent.get("response", action_result)
+    response_text = intent.get("response") or action_result
 
     await ws.send_text(json.dumps({
         "type": "intent",
