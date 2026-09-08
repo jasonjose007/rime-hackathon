@@ -12,7 +12,7 @@ RIME_ENDPOINT = os.getenv("RIME_ENDPOINT_URL", "https://users.rime.ai/v1/rime-tt
 RIME_API_KEY = os.getenv("RIME_API_KEY", "")
 RIME_VOICE_ID = os.getenv("RIME_VOICE_ID", "marsh")
 RIME_MODEL_ID = os.getenv("RIME_MODEL_ID", "mist")
-RIME_LANGUAGE = os.getenv("RIME_LANGUAGE", "en")
+RIME_LANGUAGE = os.getenv("RIME_LANGUAGE", "eng")
 RIME_AUDIO_FORMAT = os.getenv("RIME_AUDIO_FORMAT", "mp3")
 RIME_SAMPLE_RATE = int(os.getenv("RIME_SAMPLE_RATE", "22050"))
 
@@ -31,6 +31,10 @@ class RimeTTSClient:
         self._client = httpx.AsyncClient(timeout=30.0)
 
     async def synthesize_streaming(self, text: str) -> AsyncGenerator[bytes, None]:
+        if not text or not text.strip():
+            logger.warning("Empty text, skipping TTS")
+            return
+
         if not self.api_key:
             logger.warning("No RIME_API_KEY set, using mock TTS")
             async for chunk in self._mock_tts(text):
@@ -39,7 +43,7 @@ class RimeTTSClient:
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Accept": f"audio/{self.audio_format}",
+            "Accept": "audio/mp3",
             "Content-Type": "application/json",
         }
 
@@ -48,10 +52,7 @@ class RimeTTSClient:
             "speaker": self.voice_id,
             "modelId": self.model_id,
             "lang": self.language,
-            "audioFormat": self.audio_format,
             "samplingRate": self.sample_rate,
-            "speedAlpha": 1.0,
-            "reduceLatency": True,
         }
 
         t_start = time.time()

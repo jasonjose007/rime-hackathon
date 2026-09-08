@@ -8,7 +8,7 @@ logger = logging.getLogger("voicelog.orchestrator")
 
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_ENDPOINT = os.getenv("LLM_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
 INTENT_PATTERNS = [
     (r"(?i)^(?:log|record|entry)\b[:\s]*(.+)", "log"),
