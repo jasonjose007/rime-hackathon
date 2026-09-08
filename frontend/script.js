@@ -114,14 +114,7 @@
     }
 
     function handleAudioChunk(arrayBuffer) {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        if (audioCtx.state === "suspended") {
-            audioCtx.resume();
-        }
-
+        ensureAudioCtx();
         playFullAudio(arrayBuffer);
     }
 
@@ -161,12 +154,13 @@
 
     function finishPlayback() {
         setTimeout(() => {
-            if (audioQueue.length === 0) {
+            if (!playbackActive) {
                 isSpeaking = false;
                 pulseRing.className = "idle";
                 interruptBtn.style.display = "none";
+                metricStatus.textContent = "Ready";
             }
-        }, 300);
+        }, 500);
     }
 
     function sendInterrupt() {
@@ -257,8 +251,19 @@
         micBtn.classList.remove("recording");
     }
 
+    function ensureAudioCtx() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
+    }
+
     function sendText(text) {
         if (!text.trim() || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+        ensureAudioCtx();
 
         if (isSpeaking) {
             sendInterrupt();
