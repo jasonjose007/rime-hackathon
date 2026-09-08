@@ -67,7 +67,8 @@ class ASRClient:
             return ""
 
     def _mock_transcribe(self) -> str:
-        return ""
+        logger.info("Mock ASR: returning placeholder (set GROQ_API_KEY for real transcription)")
+        return "log mock entry recorded"
 
     async def close(self):
         await self._client.aclose()

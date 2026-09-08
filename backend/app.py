@@ -59,20 +59,28 @@ async def websocket_endpoint(ws: WebSocket):
 
     try:
         while True:
-            raw = await ws.receive()
+            try:
+                msg_type = await ws.receive()
+            except WebSocketDisconnect:
+                break
 
-            if "bytes" in raw and raw["bytes"]:
-                audio_bytes = raw["bytes"]
+            if msg_type.get("type") == "websocket.disconnect":
+                break
+
+            if "bytes" in msg_type and msg_type["bytes"]:
+                audio_bytes = msg_type["bytes"]
                 await handle_audio_input(ws, session, audio_bytes)
 
-            elif "text" in raw and raw["text"]:
-                msg = json.loads(raw["text"])
+            elif "text" in msg_type and msg_type["text"]:
+                msg = json.loads(msg_type["text"])
                 await handle_text_message(ws, session, msg)
 
     except WebSocketDisconnect:
-        logger.info("Client disconnected")
+        pass
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
+    finally:
+        logger.info("Client disconnected")
 
 
 async def handle_text_message(ws: WebSocket, session: SessionState, msg: dict):
