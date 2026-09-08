@@ -32,11 +32,21 @@ class ASRClient:
             "Authorization": f"Bearer {self.groq_key}",
         }
 
-        from audio_utils import ensure_wav_header
-        wav_bytes = ensure_wav_header(audio_bytes)
+        if audio_bytes[:4] == b"RIFF":
+            filename = "audio.wav"
+            mime = "audio/wav"
+        elif audio_bytes[:4] == b"\x1a\x45\xdf\xa3" or b"webm" in audio_bytes[:32]:
+            filename = "audio.webm"
+            mime = "audio/webm"
+        elif audio_bytes[:3] == b"OGG" or audio_bytes[:4] == b"OggS":
+            filename = "audio.ogg"
+            mime = "audio/ogg"
+        else:
+            filename = "audio.webm"
+            mime = "audio/webm"
 
         files = {
-            "file": ("audio.wav", io.BytesIO(wav_bytes), "audio/wav"),
+            "file": (filename, io.BytesIO(audio_bytes), mime),
         }
         data = {
             "model": ASR_MODEL,

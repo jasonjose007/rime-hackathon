@@ -215,34 +215,44 @@ def execute_action(session: SessionState, intent: dict) -> str:
 async def stream_tts_to_client(ws: WebSocket, session: SessionState, text: str, seq: int, t_pipeline_start: float):
     session.is_speaking = True
     session.interrupted = False
-    first_chunk_sent = False
     t_tts_start = time.time()
+    audio_buffer = bytearray()
+    ttfb = 0.0
 
     try:
+        first = True
         async for audio_chunk in rime.synthesize_streaming(text):
             if session.interrupted or session.sequence_id != seq:
                 logger.info(f"TTS cancelled for seq {seq}")
                 break
 
-            if not first_chunk_sent:
-                first_chunk_latency = round((time.time() - t_pipeline_start) * 1000, 1)
-                tts_latency = round((time.time() - t_tts_start) * 1000, 1)
-                await ws.send_text(json.dumps({
-                    "type": "tts_start",
-                    "sequence_id": seq,
-                    "first_chunk_latency_ms": first_chunk_latency,
-                    "tts_latency_ms": tts_latency
-                }))
-                first_chunk_sent = True
+            if first:
+                ttfb = time.time() - t_tts_start
+                first = False
 
-            await ws.send_bytes(audio_chunk)
+            audio_buffer.extend(audio_chunk)
 
-        if not session.interrupted and session.sequence_id == seq:
-            await ws.send_text(json.dumps({
-                "type": "tts_end",
-                "sequence_id": seq,
-                "total_latency_ms": round((time.time() - t_pipeline_start) * 1000, 1)
-            }))
+        if session.interrupted or session.sequence_id != seq:
+            return
+
+        first_chunk_latency = round((ttfb + (t_tts_start - t_pipeline_start)) * 1000, 1)
+        tts_latency = round(ttfb * 1000, 1)
+
+        await ws.send_text(json.dumps({
+            "type": "tts_start",
+            "sequence_id": seq,
+            "first_chunk_latency_ms": first_chunk_latency,
+            "tts_latency_ms": tts_latency
+        }))
+
+        if audio_buffer:
+            await ws.send_bytes(bytes(audio_buffer))
+
+        await ws.send_text(json.dumps({
+            "type": "tts_end",
+            "sequence_id": seq,
+            "total_latency_ms": round((time.time() - t_pipeline_start) * 1000, 1)
+        }))
 
     except Exception as e:
         logger.error(f"TTS streaming error: {e}")

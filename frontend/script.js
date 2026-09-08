@@ -113,69 +113,35 @@
 
     function handleAudioChunk(arrayBuffer) {
         if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 22050,
-            });
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        audioQueue.push(arrayBuffer);
-        if (!playbackActive) {
-            playbackActive = true;
-            nextPlayTime = audioCtx.currentTime;
-            drainAudioQueue();
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
         }
+
+        playFullAudio(arrayBuffer);
     }
 
-    function drainAudioQueue() {
-        if (audioQueue.length === 0) {
-            playbackActive = false;
-            return;
-        }
-
-        const buffer = audioQueue.shift();
-        playChunk(buffer).then(() => {
-            drainAudioQueue();
-        });
-    }
-
-    async function playChunk(arrayBuffer) {
+    async function playFullAudio(arrayBuffer) {
         if (!audioCtx) return;
 
         try {
-            const audioBuffer = await decodeAudioSafe(arrayBuffer);
-            if (!audioBuffer) return;
-
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
             const source = audioCtx.createBufferSource();
             source.buffer = audioBuffer;
             source.connect(audioCtx.destination);
-
-            const startTime = Math.max(audioCtx.currentTime, nextPlayTime);
-            source.start(startTime);
+            source.start(0);
             currentSource = source;
+            playbackActive = true;
 
-            nextPlayTime = startTime + audioBuffer.duration;
-
-            return new Promise((resolve) => {
-                source.onended = resolve;
-                setTimeout(resolve, audioBuffer.duration * 1000 + 50);
-            });
+            source.onended = () => {
+                playbackActive = false;
+                currentSource = null;
+            };
         } catch (e) {
-            console.warn("Audio decode/play error:", e);
-        }
-    }
-
-    async function decodeAudioSafe(arrayBuffer) {
-        try {
-            return await audioCtx.decodeAudioData(arrayBuffer.slice(0));
-        } catch {
-            const pcmView = new Int16Array(arrayBuffer);
-            const floatData = new Float32Array(pcmView.length);
-            for (let i = 0; i < pcmView.length; i++) {
-                floatData[i] = pcmView[i] / 32768;
-            }
-            const buf = audioCtx.createBuffer(1, floatData.length, 22050);
-            buf.getChannelData(0).set(floatData);
-            return buf;
+            console.warn("Audio decode error:", e);
+            playbackActive = false;
         }
     }
 
